@@ -1,0 +1,6 @@
+set disassembly-flavor intel
+b *0x40321c
+b *0x40322d
+c
+x/1wx $rbp-0x20
+x/1wx $rbp-0x48
