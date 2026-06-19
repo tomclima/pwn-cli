@@ -26,6 +26,9 @@ with open('gdbscript', 'r') as file:
 # HELPER FUNCTIONS FOR THE REPL
 # -------------------------------------------------------------------------
 
+def r():
+    restart()
+
 def restart():
     """
     Spawns a new tmux window running this script, then kills all other windows.
@@ -59,13 +62,16 @@ def read_exploit(filename="exploit.py"):
     except Exception as e:
         print(f"[-] Error reading or executing {filename}: {e}")
 
+def repl_startup(repl):
+    read_exploit()
+    io.send(exploit())
+
 # -------------------------------------------------------------------------
 # MAIN EXECUTION
 # -------------------------------------------------------------------------
 
 # Start with GDB attached (Mode 1)
 
-read_exploit()
 io = gdb.debug(exe.path, gdbscript=gdbscript)
 
 print("[*] Dropping into Python REPL. 'io' is your live connection object.")
@@ -73,7 +79,7 @@ print("[*] Available helpers: restart(), read_exploit()")
 
 # MODE 2: LIVE PYTHON CLI (This freezes the script here and opens a prompt)
 # Passing globals() allows the REPL to see restart() and read_exploit()
-ptpython.repl.embed(globals(), locals()) 
+ptpython.repl.embed(globals(), locals(), configure=repl_startup) 
 
 # MODE 3: RAW INTERACTION (Runs after you exit the Python CLI)
 print("[*] Exiting Python CLI. Switching to raw interaction...")
