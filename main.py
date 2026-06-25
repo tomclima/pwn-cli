@@ -5,6 +5,7 @@ import subprocess
 import sys
 
 
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Launch pwn_cli.py with a selected target binary."
@@ -83,6 +84,14 @@ def ensure_tmux_session(session_name="pwn_cli"):
 
 
 if __name__ == "__main__":
+    
+    
+
+    with open('logo', 'r') as file:
+        logo = file.read()
+        print(logo)
+
+    
     args = parse_args()
 
     # Ensure tmux is available and session exists
