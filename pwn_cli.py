@@ -1,32 +1,66 @@
 #!/usr/bin/env python3
 import os
 import sys
+import json
 from pwn import *
 import ptpython.repl
 
+SESSION_FILE = ".pwn_cli_session.json"
+
+def load_session():
+    """Load session config from file."""
+    session_path = os.environ.get("PWN_CLI_SESSION_FILE", SESSION_FILE)
+    if os.path.exists(session_path):
+        try:
+            with open(session_path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[-] Warning: could not load session file: {e}")
+            return {}
+    print(f"[-] Error: Session file not found at {session_path}")
+    sys.exit(1)
+
+session = load_session()
 
 os.system("clear")
 
-with open('logo', 'r') as file:
-    logo = file.read()
-    print(logo)
+# Load logo from session
+logo_path = session.get("logo", "logo")
+try:
+    with open(logo_path, 'r') as file:
+        logo = file.read()
+        print(logo)
+except Exception as e:
+    print(f"[-] Warning: could not load logo from {logo_path}: {e}")
 
+# Load binary from session
+binary_path = session.get("binary")
+if not binary_path:
+    print("[-] Error: No binary path in session.")
+    sys.exit(1)
 
-
-exe = elf.ELF('./vault')
+exe = elf.ELF(binary_path)
 context.binary = exe
 context.terminal = ['tmux', 'splitw', '-h']
 context.log_level = 'error' 
 
+# Load gdbscript from session
+gdbscript_path = session.get("gdbscript", "gdbscript")
 gdbscript = None
-with open('gdbscript', 'r') as file:
-    gdbscript = file.read()
+try:
+    with open(gdbscript_path, 'r') as file:
+        gdbscript = file.read()
+except Exception as e:
+    print(f"[-] Warning: could not load gdbscript from {gdbscript_path}: {e}")
 
 # -------------------------------------------------------------------------
 # HELPER FUNCTIONS FOR THE REPL
 # -------------------------------------------------------------------------
 
 def r():
+    """
+    restart() shorthand
+    """
     restart()
 
 def restart():
@@ -42,11 +76,14 @@ def restart():
     # 2. Kill the current tmux window (which terminates this old session)
     os.system("tmux kill-window")
 
-def read_exploit(filename="exploit.py"):
+def read_exploit(filename=None):
     """
-    Reads exploit.py, extracts the exploit() function, and loads it 
+    Reads exploit file, extracts the exploit() function, and loads it 
     directly into the current REPL environment.
     """
+    if filename is None:
+        filename = session.get("exploit_file", "exploit.py")
+    
     if not os.path.exists(filename):
         print(f"[-] Error: {filename} not found.")
         return

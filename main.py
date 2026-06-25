@@ -1,10 +1,38 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import os
 import subprocess
 import sys
 
+SESSION_FILE = ".pwn_cli_session.json"
 
+def load_session():
+    """Load session config from file if it exists."""
+    if os.path.exists(SESSION_FILE):
+        try:
+            with open(SESSION_FILE, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[-] Warning: could not load session file: {e}")
+            return {}
+    return {}
+
+def save_session(config):
+    """Save session config to file."""
+    try:
+        with open(SESSION_FILE, 'w') as f:
+            json.dump(config, f, indent=2)
+    except Exception as e:
+        print(f"[-] Warning: could not save session file: {e}")
+
+def clear_session():
+    """Delete the session file."""
+    if os.path.exists(SESSION_FILE):
+        os.remove(SESSION_FILE)
+        print(f"[+] Session cleared: {SESSION_FILE} deleted.")
+    else:
+        print(f"[*] No session file to clear.")
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -36,10 +64,11 @@ def parse_args():
         default="logo",
         help="Logo file path to pass to pwn_cli.py (default: logo).",
     )
+  
     parser.add_argument(
-        "--no-gdb",
+        "--clear-session",
         action="store_true",
-        help="Disable automatic gdb attachment in pwn_cli.py.",
+        help="Clear the session file and exit.",
     )
     parser.add_argument(
         "--python",
@@ -52,24 +81,7 @@ def parse_args():
         help="Path to the pwn_cli.py entrypoint script.",
     )
 
-    args = parser.parse_args()
-    binary = args.binary or args.binary_arg
-    if not binary:
-        parser.error("A target binary path must be provided as a positional argument or via --binary.")
-
-    args.binary = os.path.abspath(binary)
-    args.exploit_file = os.path.abspath(args.exploit_file)
-    args.gdbscript = os.path.abspath(args.gdbscript)
-    args.logo = os.path.abspath(args.logo)
-    args.pwn_cli = os.path.abspath(args.pwn_cli)
-
-    if not os.path.exists(args.binary):
-        parser.error(f"Target binary not found: {args.binary}")
-
-    if not os.path.isfile(args.pwn_cli):
-        parser.error(f"pwn_cli.py not found at: {args.pwn_cli}")
-
-    return args
+    return parser
 
 
 def ensure_tmux_session(session_name="pwn_cli"):
@@ -85,30 +97,63 @@ def ensure_tmux_session(session_name="pwn_cli"):
 
 if __name__ == "__main__":
     
-    
-
     with open('logo', 'r') as file:
         logo = file.read()
         print(logo)
 
-    
-    args = parse_args()
+    parser = parse_args()
+    args = parser.parse_args()
+
+    # Handle --clear-session and exit
+    if args.clear_session:
+        clear_session()
+        sys.exit(0)
+
+    # Load session file if it exists
+    session = load_session()
+
+    # Merge CLI args with session defaults (CLI args override)
+    binary = args.binary or args.binary_arg or session.get("binary")
+    exploit_file = args.exploit_file or session.get("exploit_file", "exploit.py")
+    gdbscript = args.gdbscript or session.get("gdbscript", "gdbscript")
+    logo_file = args.logo or session.get("logo", "logo")
+
+    # Validate binary
+    if not binary:
+        parser.error("A target binary path must be provided as a positional argument, via --binary, or saved in session.")
+
+    binary = os.path.abspath(binary)
+    exploit_file = os.path.abspath(exploit_file)
+    gdbscript = os.path.abspath(gdbscript)
+    logo_file = os.path.abspath(logo_file)
+    pwn_cli = os.path.abspath(args.pwn_cli)
+
+    if not os.path.exists(binary):
+        parser.error(f"Target binary not found: {binary}")
+
+    if not os.path.isfile(pwn_cli):
+        parser.error(f"pwn_cli.py not found at: {pwn_cli}")
+
+    # Save session config
+    session_config = {
+        "binary": binary,
+        "exploit_file": exploit_file,
+        "gdbscript": gdbscript,
+        "logo": logo_file,
+    }
+    save_session(session_config)
 
     # Ensure tmux is available and session exists
     ensure_tmux_session()
 
+    # Pass session config to pwn_cli.py via environment
     env = os.environ.copy()
-    env["PWN_CLI_TARGET_BINARY"] = args.binary
-    env["PWN_CLI_EXPLOIT_FILE"] = args.exploit_file
-    env["PWN_CLI_GDBSCRIPT"] = args.gdbscript
-    env["PWN_CLI_LOGO"] = args.logo
-    if args.no_gdb:
-        env["PWN_CLI_NO_GDB"] = "1"
+    env["PWN_CLI_SESSION_FILE"] = os.path.abspath(SESSION_FILE)
 
-    cmd = [args.python, args.pwn_cli]
+    cmd = [args.python, pwn_cli]
 
-    print(f"[*] Launching pwn_cli.py with target binary: {args.binary}")
-    print(f"[*] Using exploit file: {args.exploit_file}")
+    print(f"[*] Launching pwn_cli.py with target binary: {binary}")
+    print(f"[*] Using exploit file: {exploit_file}")
 
     # Launch pwn_cli.py inside the tmux session
     subprocess.run(["tmux", "new-window", "-t", "pwn_cli", "-c", os.getcwd()] + cmd, env=env)
