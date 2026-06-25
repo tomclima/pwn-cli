@@ -7,6 +7,23 @@ import sys
 
 SESSION_FILE = ".pwn_cli_session.json"
 
+def load_example():
+    """Load session config to be set to the google ctf example"""
+
+    binary = os.path.abspath("./google-example/google_challenge")
+    gdbscript = os.path.abspath("./google-example/google_gdbscript")
+    exploit_file = os.path.abspath("./google-example/google_exploit.py")
+
+    clear_session()
+    session_config = {
+    "binary": binary,
+    "exploit_file": exploit_file,
+    "gdbscript": gdbscript,
+    }   
+
+
+    save_session(session_config)
+
 def load_session():
     """Load session config from file if it exists."""
     if os.path.exists(SESSION_FILE):
@@ -80,6 +97,11 @@ def parse_args():
         default="pwn_cli.py",
         help="Path to the pwn_cli.py entrypoint script.",
     )
+    parser.add_argument(
+    "--google",
+    action="store_true",
+    help="Launch setting the session enviroment to the one I used to solve the secure-vault google ctf challenge",
+    )
 
     return parser
 
@@ -101,8 +123,11 @@ if __name__ == "__main__":
         logo = file.read()
         print(logo)
 
+    print("test")
     parser = parse_args()
     args = parser.parse_args()
+
+    print("test2")
 
     # Handle --clear-session and exit
     if args.clear_session:
@@ -110,10 +135,16 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # Load session file if it exists
+    if args.google:
+        print("test3")
+        load_example()
+
     session = load_session()
 
+    print(session)
+    input()
     # Merge CLI args with session defaults (CLI args override)
-    binary = args.binary or args.binary_arg or session.get("binary")
+    binary = args.binary_arg or args.binary or session.get("binary")
     exploit_file = args.exploit_file or session.get("exploit_file", "exploit.py")
     gdbscript = args.gdbscript or session.get("gdbscript", "gdbscript")
     logo_file = args.logo or session.get("logo", "logo")

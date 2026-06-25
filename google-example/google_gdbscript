@@ -1,0 +1,20 @@
+set disassembly-flavor intel
+
+b *0x40321c
+b *0x40322d
+b *0x403475
+
+c
+x/1d $rbp-0x8
+x/1d $rbp-0x18
+
+
+c
+x/1wx $rbp-0x20
+x/1wx $rbp-0x48
+p/d *(int*)($rbp-0x20) - *(int*)($rbp-0x48)
+x/1s *(void **)($rbp-0x40)
+x/4wx *(void **)($rbp-0x40)
+
+c
+x/1s $rbp-0xd0

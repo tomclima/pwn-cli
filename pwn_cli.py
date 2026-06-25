@@ -7,6 +7,7 @@ import ptpython.repl
 
 SESSION_FILE = ".pwn_cli_session.json"
 
+
 def load_session():
     """Load session config from file."""
     session_path = os.environ.get("PWN_CLI_SESSION_FILE", SESSION_FILE)
@@ -101,6 +102,7 @@ def read_exploit(filename=None):
 
 def repl_startup(repl):
     read_exploit()
+    input()
     io.send(exploit())
 
 # -------------------------------------------------------------------------
@@ -110,6 +112,9 @@ def repl_startup(repl):
 # Start with GDB attached (Mode 1)
 
 io = gdb.debug(exe.path, gdbscript=gdbscript)
+print(session)
+
+
 
 print("[*] Dropping into Python REPL. 'io' is your live connection object.")
 print("[*] Available helpers: restart(), read_exploit()")
