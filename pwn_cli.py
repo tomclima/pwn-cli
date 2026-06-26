@@ -27,7 +27,7 @@ session = load_session()
 os.system("clear")
 
 # Load logo from session
-logo_path = session.get("logo", "logo")
+logo_path = Path(__file__).resolve().parent/'logo'
 try:
     with open(logo_path, 'r') as file:
         logo = file.read()

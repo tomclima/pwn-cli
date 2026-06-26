@@ -10,16 +10,16 @@ SESSION_FILE = ".pwn_cli_session.json"
 
 def load_google_example():
     """Load session config to be set to the google ctf example"""
-
-    binary = os.path.abspath("./google-example/google_challenge")
-    gdbscript = os.path.abspath("./google-example/google_gdbscript")
-    exploit_file = os.path.abspath("./google-example/google_exploit.py")
+    google_example_path = pathlib.Path(__file__).resolve().parent/'google-example'
+    binary = google_example_path/"google_challenge"
+    gdbscript = google_example_path/"google_gdbscript"
+    exploit_file = google_example_path/"google_exploit.py"
 
     clear_session()
     session_config = {
-    "binary": binary,
-    "exploit_file": exploit_file,
-    "gdbscript": gdbscript
+    "binary": str(binary),
+    "exploit_file": str(exploit_file),
+    "gdbscript": str(gdbscript)
     }   
 
 
@@ -118,7 +118,7 @@ def parse_args():
     )
     parser.add_argument(
         "--pwn-cli",
-        default="pwn_cli.py",
+        default=pathlib.Path(__file__).resolve().parent/'pwn_cli.py',
         help="Path to the pwn_cli.py entrypoint script.",
     )
     parser.add_argument(
@@ -142,8 +142,8 @@ def ensure_tmux_session(session_name="pwn_cli"):
 
 
 if __name__ == "__main__":
-    
-    with open('logo', 'r') as file:
+    logo_path = pathlib.Path(__file__).resolve().parent/'logo'
+    with open(logo_path, 'r') as file:
         logo = file.read()
         print(logo)
 
@@ -151,18 +151,20 @@ if __name__ == "__main__":
     parser = parse_args()
     args = parser.parse_args()
 
-    if args.init:
-        
-        base_path = pathlib.Path(args.init)
-        exploit_exists = (base_path / "exploit.py").exists()
-        gdb_exists = (base_path / "gdbscript").exists()
-        if(exploit_exists or gdb_exists):
-            print(f"exploit and gdbscript files already exist at {base_path}! Delete them before creating new ones")
-            sys.exit(1)
+    if args.init is not None or "--init" in sys.argv:
+            # Default to current directory "." if --init was passed without a path
+            init_path = args.init if args.init else "."
+            base_path = pathlib.Path(init_path)
+            
+            exploit_exists = (base_path / "exploit.py").exists()
+            gdb_exists = (base_path / "gdbscript").exists()
+            if exploit_exists or gdb_exists:
+                print(f"[-] Exploit and gdbscript files already exist at {base_path.resolve()}! Delete them before creating new ones")
+                sys.exit(1)
 
-        init_default(args.init)
-        print("Default exploit.py and gdbscript files created!")
-        sys.exit(0)
+            init_default(base_path)
+            print(f"[+] Default exploit.py and gdbscript files created at {base_path.resolve()}!")
+            sys.exit(0)
 
 
 
@@ -200,9 +202,9 @@ if __name__ == "__main__":
 
     # Save session config
     session_config = {
-        "binary": binary,
-        "exploit_file": exploit_file,
-        "gdbscript": gdbscript,
+        "binary": str(binary),
+        "exploit_file": str(exploit_file),
+        "gdbscript": str(gdbscript),
     }
     save_session(session_config)
 
