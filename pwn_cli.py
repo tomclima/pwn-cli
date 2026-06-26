@@ -133,7 +133,7 @@ def repl_startup(repl):
 # Start with GDB attached (Mode 1)
 
 io = gdb.debug(exe.path, gdbscript=gdbscript)
-print(session)
+
 
 
 
