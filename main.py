@@ -76,11 +76,7 @@ def parse_args():
         default= None,
         help="GDB script file path to pass to pwn_cli.py (default: gdbscript).",
     )
-    parser.add_argument(
-        "--logo",
-        default= None,
-        help="Logo file path to pass to pwn_cli.py (default: logo).",
-    )
+
   
     parser.add_argument(
         "--clear-session",
@@ -145,7 +141,6 @@ if __name__ == "__main__":
     exploit_file = args.exploit_file or session.get("exploit_file", "exploit.py")
 
     gdbscript = args.gdbscript or session.get("gdbscript", "gdbscript")
-    logo_file = args.logo or session.get("logo", "logo")
 
     # Validate binary
     if not binary:
@@ -154,7 +149,6 @@ if __name__ == "__main__":
     binary = os.path.abspath(binary)
     exploit_file = os.path.abspath(exploit_file)
     gdbscript = os.path.abspath(gdbscript)
-    logo_file = os.path.abspath(logo_file)
     pwn_cli = os.path.abspath(args.pwn_cli)
 
     if not os.path.exists(binary):
@@ -168,7 +162,6 @@ if __name__ == "__main__":
         "binary": binary,
         "exploit_file": exploit_file,
         "gdbscript": gdbscript,
-        "logo": logo_file,
     }
     save_session(session_config)
 
