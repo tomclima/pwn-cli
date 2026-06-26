@@ -4,6 +4,7 @@ import sys
 import json
 from pwn import *
 import ptpython.repl
+import importlib.util
 
 SESSION_FILE = ".pwn_cli_session.json"
 
@@ -76,29 +77,48 @@ def restart():
     
     # 2. Kill the current tmux window (which terminates this old session)
     os.system("tmux kill-window")
-
+    
 def read_exploit(filename=None):
-    """
-    Reads exploit file, extracts the exploit() function, and loads it 
-    directly into the current REPL environment.
-    """
     if filename is None:
         filename = session.get("exploit_file", "exploit.py")
-    
-    if not os.path.exists(filename):
+
+    path = Path(filename).resolve()
+    if not path.exists():
         print(f"[-] Error: {filename} not found.")
         return
 
     try:
-        with open(filename, 'r') as f:
-            code = f.read()
-        
-        # We execute the file's code inside the global context of the REPL.
-        # This will inject the `exploit()` function dynamically.
-        exec(code, globals())
-        print(f"[+] Successfully loaded/reloaded exploit() from {filename}!")
+        # 1. Create a unique module name or keep overriding 'current_exploit'
+        module_name = "current_exploit"
+
+        # 2. Load the file dynamically using importlib
+        spec = importlib.util.spec_from_file_location(module_name, str(path))
+        if spec is None or spec.loader is None:
+            print(f"[-] Error: Could not load spec for {filename}")
+            return
+
+        module = importlib.util.module_from_spec(spec)
+
+        # 3. Force update sys.modules so imports within the exploit behave nicely
+        sys.modules[module_name] = module
+
+        # 4. Execute the module to populate it
+        spec.loader.exec_module(module)
+
+        # 5. Inject the module's functions cleanly into the REPL globals
+        # You can either inject the whole module:
+        globals()["exploit_mod"] = module
+        # Or explicitly grab just the exploit function:
+        if hasattr(module, "exploit"):
+            globals()["exploit"] = module.exploit
+            print(
+                f"[+] Successfully loaded/reloaded exploit() from {filename}!"
+            )
+        else:
+            print(f"[-] Warning: {filename} has no exploit() function defined.")
+
     except Exception as e:
-        print(f"[-] Error reading or executing {filename}: {e}")
+        print(f"[-] Error loading {filename}: {e}")
 
 def repl_startup(repl):
     read_exploit()
