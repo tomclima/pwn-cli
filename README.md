@@ -1,5 +1,7 @@
 # pwn_cli
 
+<img width="906" height="350" alt="image" src="https://github.com/user-attachments/assets/6827665a-6679-4ffc-bd60-a360a6eb7198" />
+
 pwn_cli is a lightweight helper for working through binary exploitation challenges with pwntools, GDB, and a Python-based REPL.
 
 It helps you:
@@ -60,6 +62,8 @@ python3 main.py --binary /path/to/your/binary
 ```
 
 ### 3. Use the bundled Google example
+
+This is meant to showcase how I used this helper in the process of solving the "secure-vault" at https://capturetheflag.withgoogle.com/beginners-quest 
 
 ```bash
 python3 main.py --google_example
