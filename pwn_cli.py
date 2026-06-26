@@ -102,7 +102,6 @@ def read_exploit(filename=None):
 
 def repl_startup(repl):
     read_exploit()
-    input()
     io.send(exploit())
 
 # -------------------------------------------------------------------------
