@@ -1,32 +1,68 @@
 #!/usr/bin/env python3
 import os
 import sys
+import json
 from pwn import *
 import ptpython.repl
+import importlib.util
 
+SESSION_FILE = ".pwn_cli_session.json"
+
+
+def load_session():
+    """Load session config from file."""
+    session_path = os.environ.get("PWN_CLI_SESSION_FILE", SESSION_FILE)
+    if os.path.exists(session_path):
+        try:
+            with open(session_path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[-] Warning: could not load session file: {e}")
+            return {}
+    print(f"[-] Error: Session file not found at {session_path}")
+    sys.exit(1)
+
+session = load_session()
 
 os.system("clear")
 
-with open('logo', 'r') as file:
-    logo = file.read()
-    print(logo)
+# Load logo from session
+logo_path = Path(__file__).resolve().parent/'logo'
+try:
+    with open(logo_path, 'r') as file:
+        logo = file.read()
+        print(logo)
+except Exception as e:
+    print(f"[-] Warning: could not load logo from {logo_path}: {e}")
 
+# Load binary from session
+binary_path = session.get("binary")
+if not binary_path:
+    print("[-] Error: No binary path in session.")
+    sys.exit(1)
 
-
-exe = elf.ELF('./vault')
+exe = elf.ELF(binary_path)
 context.binary = exe
 context.terminal = ['tmux', 'splitw', '-h']
 context.log_level = 'error' 
 
+# Load gdbscript from session
+gdbscript_path = session.get("gdbscript", "gdbscript")
 gdbscript = None
-with open('gdbscript', 'r') as file:
-    gdbscript = file.read()
+try:
+    with open(gdbscript_path, 'r') as file:
+        gdbscript = file.read()
+except Exception as e:
+    print(f"[-] Warning: could not load gdbscript from {gdbscript_path}: {e}")
 
 # -------------------------------------------------------------------------
 # HELPER FUNCTIONS FOR THE REPL
 # -------------------------------------------------------------------------
 
 def r():
+    """
+    restart() shorthand
+    """
     restart()
 
 def restart():
@@ -42,25 +78,49 @@ def restart():
     # 2. Kill the current tmux window (which terminates this old session)
     os.system("tmux kill-window")
 
-def read_exploit(filename="exploit.py"):
-    """
-    Reads exploit.py, extracts the exploit() function, and loads it 
-    directly into the current REPL environment.
-    """
-    if not os.path.exists(filename):
+def read_exploit(filename=None):
+    if filename is None:
+        filename = session.get("exploit_file", "exploit.py")
+
+    path = Path(filename).resolve()
+    if not path.exists():
         print(f"[-] Error: {filename} not found.")
         return
 
     try:
-        with open(filename, 'r') as f:
-            code = f.read()
+        # 1. Create a unique module name or keep overriding 'current_exploit'
+        module_name = "current_exploit"
+
+        # 2. Load the file dynamically using importlib
+        spec = importlib.util.spec_from_file_location(module_name, str(path))
+        if spec is None or spec.loader is None:
+            print(f"[-] Error: Could not load spec for {filename}")
+            return
+
+        module = importlib.util.module_from_spec(spec)
+
+        # 3. Force update sys.modules so imports within the exploit behave nicely
+        sys.modules[module_name] = module
         
-        # We execute the file's code inside the global context of the REPL.
-        # This will inject the `exploit()` function dynamically.
-        exec(code, globals())
-        print(f"[+] Successfully loaded/reloaded exploit() from {filename}!")
+        # 4. Execute the module to populate it
+        module.session = session
+        sys.modules["current_exploit"] = module
+
+        spec.loader.exec_module(module)
+
+        # 5. Inject the module's functions cleanly into the REPL globals
+        # You can either inject the whole module:
+        globals()["exploit_mod"] = module
+
+        # 6. Simulating "from exploit_mod import *"
+        # Loop through everything defined inside the module
+        for attr_name in dir(module):
+            # Skip private/internal dunder attributes like __name__, __file__, etc.
+            if not attr_name.startswith("_"):
+                globals()[attr_name] = getattr(module, attr_name)
+
     except Exception as e:
-        print(f"[-] Error reading or executing {filename}: {e}")
+        print(f"[-] Error loading {filename}: {e}")
 
 def repl_startup(repl):
     read_exploit()
@@ -73,6 +133,9 @@ def repl_startup(repl):
 # Start with GDB attached (Mode 1)
 
 io = gdb.debug(exe.path, gdbscript=gdbscript)
+print(session)
+
+
 
 print("[*] Dropping into Python REPL. 'io' is your live connection object.")
 print("[*] Available helpers: restart(), read_exploit()")
@@ -80,7 +143,6 @@ print("[*] Available helpers: restart(), read_exploit()")
 # MODE 2: LIVE PYTHON CLI (This freezes the script here and opens a prompt)
 # Passing globals() allows the REPL to see restart() and read_exploit()
 ptpython.repl.embed(globals(), locals(), configure=repl_startup) 
-
 # MODE 3: RAW INTERACTION (Runs after you exit the Python CLI)
 print("[*] Exiting Python CLI. Switching to raw interaction...")
 io.interactive()

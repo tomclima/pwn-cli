@@ -1,0 +1,45 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*~
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Binary and compiled output
+a.out
+core
+
+# Misc
+.DS_Store
+.python-version
+
+# Agent md files
+*.md
+
+# Session
+*.json
+
+# --init files
+exploit.py
+gdbscript
