@@ -4,10 +4,11 @@ import json
 import os
 import subprocess
 import sys
+import pathlib
 
 SESSION_FILE = ".pwn_cli_session.json"
 
-def load_example():
+def load_google_example():
     """Load session config to be set to the google ctf example"""
 
     binary = os.path.abspath("./google-example/google_challenge")
@@ -34,6 +35,25 @@ def load_session():
             print(f"[-] Warning: could not load session file: {e}")
             return {}
     return {}
+
+
+def init_default(filepath : pathlib.Path):
+    """Initialize default files"""
+    defaults_path = pathlib.Path(__file__).resolve().parent/'defaults'
+    filepath = pathlib.Path(filepath)
+    default_exploit_content = None
+    default_gdbscript = None
+    with open(defaults_path/"default_exploit.py", "r") as file:
+        default_exploit_content = file.read()
+    with open(defaults_path/'default_gdbscript', 'r') as file:
+        default_gdbscript = file.read()
+
+    with open(filepath/'exploit.py', "w") as file:
+        file.write(default_exploit_content)
+    with open(filepath/'gdbscript', 'w') as file:
+        file.write(default_gdbscript)
+
+    
 
 def save_session(config):
     """Save session config to file."""
@@ -66,6 +86,14 @@ def parse_args():
         dest="binary_arg",
         help="Path to the target binary to analyze and exploit.",
     )
+    
+    parser.add_argument(
+        "--init",
+        nargs='?',
+        default=None,
+        help="Create files"
+    )
+
     parser.add_argument(
         "--exploit-file",
         default= None,
@@ -123,6 +151,19 @@ if __name__ == "__main__":
     parser = parse_args()
     args = parser.parse_args()
 
+    if args.init:
+        
+        base_path = pathlib.Path(args.init)
+        exploit_exists = (base_path / "exploit.py").exists()
+        gdb_exists = (base_path / "gdbscript").exists()
+        if(exploit_exists or gdb_exists):
+            print(f"exploit and gdbscript files already exist at {base_path}! Delete them before creating new ones")
+            sys.exit(1)
+
+        init_default(args.init)
+        print("Default exploit.py and gdbscript files created!")
+        sys.exit(0)
+
 
 
     # Handle --clear-session and exit
@@ -132,7 +173,7 @@ if __name__ == "__main__":
 
     # Load session file if it exists
     if args.google_example:
-        load_example()
+        load_google_example()
 
     session = load_session()
 
