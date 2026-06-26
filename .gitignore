@@ -42,6 +42,3 @@ core
 # Session
 *.json
 
-# --init files
-exploit.py
-gdbscript

@@ -96,25 +96,10 @@ Once the session starts, you will enter a Python REPL with access to:
 - `restart()` — restart the session in a new tmux window
 - `read_exploit()` — reload the exploit script from disk
 
-## Project layout
-
-```text
-.
-├── defaults/
-│   ├── default_exploit.py
-│   └── default_gdbscript
-├── google-example/
-│   ├── google_challenge
-│   ├── google_exploit.py
-│   └── google_gdbscript
-├── main.py
-├── pwn_cli.py
-├── requirements.txt
-└── logo
-```
 
 ## Notes
 
 - The launcher stores session information in `.pwn_cli_session.json`.
 - `main.py` uses tmux to create a managed session and then launches the interactive REPL.
 - The exploit file is loaded dynamically, so you can update it without restarting the whole workflow manually.
+- The `gdbscript` is loaded into GDB and reloaded every time `restart()` is called, so it can also be edited freely during the session.
