@@ -34,8 +34,10 @@ core
 .DS_Store
 .python-version
 
-# Agent md files
+# Markdown files
 *.md
+!README.md
+!**/README.md
 
 # Session
 *.json
