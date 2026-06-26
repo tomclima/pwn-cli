@@ -77,7 +77,7 @@ def restart():
     
     # 2. Kill the current tmux window (which terminates this old session)
     os.system("tmux kill-window")
-    
+
 def read_exploit(filename=None):
     if filename is None:
         filename = session.get("exploit_file", "exploit.py")
@@ -101,21 +101,23 @@ def read_exploit(filename=None):
 
         # 3. Force update sys.modules so imports within the exploit behave nicely
         sys.modules[module_name] = module
-
+        
         # 4. Execute the module to populate it
+        module.session = session
+        sys.modules["current_exploit"] = module
+
         spec.loader.exec_module(module)
 
         # 5. Inject the module's functions cleanly into the REPL globals
         # You can either inject the whole module:
         globals()["exploit_mod"] = module
-        # Or explicitly grab just the exploit function:
-        if hasattr(module, "exploit"):
-            globals()["exploit"] = module.exploit
-            print(
-                f"[+] Successfully loaded/reloaded exploit() from {filename}!"
-            )
-        else:
-            print(f"[-] Warning: {filename} has no exploit() function defined.")
+
+        # 6. Simulating "from exploit_mod import *"
+        # Loop through everything defined inside the module
+        for attr_name in dir(module):
+            # Skip private/internal dunder attributes like __name__, __file__, etc.
+            if not attr_name.startswith("_"):
+                globals()[attr_name] = getattr(module, attr_name)
 
     except Exception as e:
         print(f"[-] Error loading {filename}: {e}")
@@ -141,7 +143,6 @@ print("[*] Available helpers: restart(), read_exploit()")
 # MODE 2: LIVE PYTHON CLI (This freezes the script here and opens a prompt)
 # Passing globals() allows the REPL to see restart() and read_exploit()
 ptpython.repl.embed(globals(), locals(), configure=repl_startup) 
-
 # MODE 3: RAW INTERACTION (Runs after you exit the Python CLI)
 print("[*] Exiting Python CLI. Switching to raw interaction...")
 io.interactive()
